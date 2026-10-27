@@ -1,0 +1,8 @@
+node_modules/
+dist/
+config.yaml
+credentials.json
+token.json
+state.json
+sync.lock
+test/fixtures/original-calendar.ics

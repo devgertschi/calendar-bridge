@@ -1,0 +1,11 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`calendar fixture > parses an anonymized source calendar into unique normalized events 1`] = `
+{
+  "allDay": 1,
+  "eventCount": 3,
+  "timed": 2,
+  "withDescription": 2,
+  "withLocation": 2,
+}
+`;

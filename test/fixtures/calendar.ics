@@ -1,0 +1,26 @@
+BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//Example Calendar//EN
+BEGIN:VEVENT
+UID:fake-standup@example.invalid
+DTSTART:20261026T090000Z
+DTEND:20261026T093000Z
+SUMMARY:Project Standup
+LOCATION:Example Room
+DESCRIPTION:Discuss project progress.
+END:VEVENT
+BEGIN:VEVENT
+UID:fake-focus@example.invalid
+DTSTART:20261027T130000Z
+DTEND:20261027T140000Z
+SUMMARY:Focus Time
+DESCRIPTION:Private placeholder description.
+END:VEVENT
+BEGIN:VEVENT
+UID:oesterreichischer-nationalfeiertag@example.invalid
+DTSTART;VALUE=DATE:20261026
+DTEND;VALUE=DATE:20261027
+SUMMARY:Österreichischer Nationalfeiertag
+LOCATION:Österreich
+END:VEVENT
+END:VCALENDAR

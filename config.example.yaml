@@ -1,0 +1,22 @@
+source:
+  icsUrl: "https://example.invalid/work-calendar.ics"
+  timezone: "Europe/Vienna"
+
+destinations:
+  - calendarId: "primary"
+    name: "Work mirror"
+
+sync:
+  lookaheadDays: 90
+  onlyBusy: true
+  copyDescription: true
+  copyLocation: true
+  visibility: private
+  summaryPrefix: ""
+  deleteRemovedEvents: true
+  allowEmptySource: false
+  writeDelayMs: 1000
+  credentialsFile: "credentials.json"
+  tokenFile: "token.json"
+  stateFile: "state.json"
+  lockFile: "sync.lock"
