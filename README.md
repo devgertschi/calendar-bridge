@@ -92,6 +92,7 @@ Important settings:
 - `copyDescription` and `copyLocation`: control copied fields.
 - `writeDelayMs`: pause before Google writes to reduce quota pressure.
 - `deleteRemovedEvents`: remove managed Google events no longer present in the source.
+- Managed Google events that have already ended are preserved, even when they are outside the source lookahead window.
 - `allowEmptySource`: explicitly allow an empty source to remove all managed events; keep this `false` unless an empty calendar is expected.
 - `stateFile`: records the last successful live run.
 - `lockFile`: prevents overlapping live runs.

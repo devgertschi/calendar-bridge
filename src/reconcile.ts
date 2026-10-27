@@ -15,7 +15,15 @@ export interface ReconcileResult {
   unchanged: number;
 }
 
-export async function reconcile(events: SourceEvent[], sink: CalendarSink, options: SyncOptions, deleteRemoved: boolean, dryRun: boolean): Promise<ReconcileResult> {
+export async function reconcile(
+  events: SourceEvent[],
+  sink: CalendarSink,
+  options: SyncOptions,
+  deleteRemoved: boolean,
+  dryRun: boolean,
+  now = new Date(),
+  timezone = "UTC"
+): Promise<ReconcileResult> {
   const existing = await sink.managedEvents();
   const desired = new Map(events.map((event) => [event.key, event]));
   const result: ReconcileResult = { created: 0, updated: 0, deleted: 0, unchanged: 0 };
@@ -57,11 +65,27 @@ export async function reconcile(events: SourceEvent[], sink: CalendarSink, optio
   if (deleteRemoved) {
     for (const [key, event] of Object.entries(existing)) {
       if (desired.has(key) || matchedKeys.has(key)) continue;
+      // The source feed is intentionally limited to now..lookahead. An event
+      // that ended before this sync must not be mistaken for a removed event.
+      if (endedBefore(event, now, timezone)) continue;
       result.deleted++;
       if (!dryRun) await sink.delete(event.id);
     }
   }
   return result;
+}
+
+function endedBefore(event: ManagedGoogleEvent, now: Date, timezone: string): boolean {
+  const end = event.end;
+  if (end?.date) {
+    const today = new Intl.DateTimeFormat("en-CA", { timeZone: timezone }).format(now);
+    return end.date <= today;
+  }
+  if (end?.dateTime) {
+    const endTime = Date.parse(end.dateTime);
+    return Number.isFinite(endTime) && endTime <= now.getTime();
+  }
+  return false;
 }
 
 export function isManaged(event: ManagedGoogleEvent): boolean {

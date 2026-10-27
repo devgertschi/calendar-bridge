@@ -57,6 +57,32 @@ describe("reconciliation", () => {
     expect(result.deleted).toBe(0);
     expect(calls).toEqual([]);
   });
+
+  it("preserves managed events that ended before the sync", async () => {
+    const calls: string[] = [];
+    const sink = {
+      managedEvents: async () => ({ old: { id: "old-id", end: { dateTime: "2026-01-01T11:00:00Z" } } as ManagedGoogleEvent }),
+      create: async () => "new",
+      update: async () => {},
+      delete: async () => { calls.push("delete"); }
+    };
+    const result = await reconcile([], sink, options, true, false, new Date("2026-01-02T00:00:00Z"));
+    expect(result.deleted).toBe(0);
+    expect(calls).toEqual([]);
+  });
+
+  it("still deletes removed events that have not ended", async () => {
+    const calls: string[] = [];
+    const sink = {
+      managedEvents: async () => ({ old: { id: "old-id", end: { dateTime: "2026-01-03T11:00:00Z" } } as ManagedGoogleEvent }),
+      create: async () => "new",
+      update: async () => {},
+      delete: async () => { calls.push("delete"); }
+    };
+    const result = await reconcile([], sink, options, true, false, new Date("2026-01-02T00:00:00Z"));
+    expect(result.deleted).toBe(1);
+    expect(calls).toEqual(["delete"]);
+  });
 });
 
 describe("source safety", () => {
