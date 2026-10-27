@@ -16,6 +16,10 @@ describe("event mapping", () => {
     expect(body.extendedProperties.private.calendar_sync_event).toBe("uid|single");
   });
 
+  it("marks out-of-office source events in the summary", () => {
+    expect(googleBody({ ...event(), outOfOffice: true }, options).summary).toBe("📴 Meeting");
+  });
+
   it("creates stable keys for single and recurring events", () => {
     expect(sourceKey("uid", new Date("2026-01-01T10:00:00Z"), false)).toBe("uid|single");
     expect(sourceKey("uid", new Date("2026-01-01T10:00:00Z"), true)).toContain("uid|");
@@ -25,6 +29,20 @@ describe("event mapping", () => {
     const current: ManagedGoogleEvent = { id: "g", summary: "Meeting", visibility: "private", start: { dateTime: "2026-01-01T11:00:00+01:00" }, end: { dateTime: "2026-01-01T12:00:00+01:00" }, location: "Room 1", description: "Details" };
     expect(visibleFieldsMatch(current, event(), options)).toBe(true);
     expect(temporalMatches(current.start, { dateTime: "2026-01-01T10:00:00.000Z" })).toBe(true);
+  });
+
+  it("updates a managed event when its out-of-office marker changes the summary", async () => {
+    const calls: string[] = [];
+    const source = { ...event(), outOfOffice: true };
+    const sink = {
+      managedEvents: async () => ({ [source.key]: { id: "old-id", summary: "Meeting", visibility: "private", extendedProperties: { private: { calendar_sync_fingerprint: fingerprint(source) } } } as ManagedGoogleEvent }),
+      create: async () => "new",
+      update: async () => { calls.push("update"); },
+      delete: async () => { calls.push("delete"); }
+    };
+    const result = await reconcile([source], sink, options, true, false);
+    expect(result.updated).toBe(1);
+    expect(calls).toEqual(["update"]);
   });
 });
 

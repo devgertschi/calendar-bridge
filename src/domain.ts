@@ -13,6 +13,7 @@ export interface SourceEvent {
   description: string;
   status: string;
   busy: boolean;
+  outOfOffice?: boolean;
 }
 
 export interface SyncOptions {
@@ -75,7 +76,7 @@ export function fingerprint(event: SourceEvent): string {
 
 export function googleBody(event: SourceEvent, options: SyncOptions): GoogleEventBody {
   const body: GoogleEventBody = {
-    summary: `${options.summaryPrefix}${event.summary}`,
+    summary: `${options.summaryPrefix}${event.outOfOffice ? "📴 " : ""}${event.summary}`,
     visibility: options.visibility,
     transparency: "opaque",
     start: event.allDay ? { date: temporalDate(event.start) } : { dateTime: temporalDateTime(event.start) },

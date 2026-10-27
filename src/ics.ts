@@ -71,7 +71,8 @@ export function parseIcs(input: string, options: IcsOptions, now = new Date(), r
       location: text(item.location),
       description: text(item.description),
       status: text(propertyValue(item, "status")).toUpperCase() || "CONFIRMED",
-      busy: isBusy(event)
+      busy: isBusy(event),
+      outOfOffice: text(propertyValue(item, "x-microsoft-cdo-busystatus")).toUpperCase() === "OOF"
     };
     if (source.status !== "CANCELLED" && (!options.onlyBusy || source.busy)) events.push(source);
   }

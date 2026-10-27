@@ -53,8 +53,9 @@ export async function reconcile(
     }
     matchedKeys.add(currentKey);
     const props = current.extendedProperties?.private ?? {};
+    const expected = googleBody(event, options);
     const metadataMatches = [fingerprint(event), legacyFingerprint(event)].includes(props.calendar_sync_fingerprint);
-    if (metadataMatches || visibleFieldsMatch(current, event, options)) {
+    if ((metadataMatches && current.summary === expected.summary) || visibleFieldsMatch(current, event, options)) {
       result.unchanged++;
       continue;
     }
