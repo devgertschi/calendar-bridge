@@ -115,6 +115,16 @@ sync complete: {"created":0,"updated":0,"deleted":0,"unchanged":200,"eventCount"
 
 Use this before the first live run and after configuration changes. Repeating a dry run produces the same plan because it intentionally does not apply changes.
 
+## Backfill past events
+
+To import events from the previous `N` calendar days, run:
+
+```sh
+npm run backfill -- --days 30 --config config.yaml
+```
+
+Backfill creates or updates events in that historical window and never deletes events. Add `--dry-run` to inspect the plan first.
+
 ## Live synchronization
 
 Run one synchronization manually:

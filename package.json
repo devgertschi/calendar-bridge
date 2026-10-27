@@ -10,6 +10,7 @@
     "test:watch": "vitest",
     "dev": "tsx src/cli.ts",
     "sync": "tsx src/cli.ts sync",
+    "backfill": "tsx src/cli.ts backfill",
     "authorize": "tsx src/cli.ts authorize"
   },
   "dependencies": {

@@ -8,6 +8,11 @@ export interface IcsOptions {
   onlyBusy: boolean;
 }
 
+export interface IcsRange {
+  start: Date;
+  end: Date;
+}
+
 export async function fetchIcs(url: string): Promise<string> {
   const response = await fetch(url, { signal: AbortSignal.timeout(30_000) });
   if (!response.ok) throw new Error(`ICS request failed: ${response.status} ${response.statusText}`);
@@ -20,9 +25,9 @@ export function assertSourceIsSafe(events: SourceEvent[], allowEmptySource: bool
   }
 }
 
-export function parseIcs(input: string, options: IcsOptions, now = new Date()): SourceEvent[] {
-  const start = now;
-  const end = new Date(now.getTime() + options.lookaheadDays * 24 * 60 * 60 * 1000);
+export function parseIcs(input: string, options: IcsOptions, now = new Date(), range?: IcsRange): SourceEvent[] {
+  const start = range?.start ?? now;
+  const end = range?.end ?? new Date(now.getTime() + options.lookaheadDays * 24 * 60 * 60 * 1000);
   const expander = new IcalExpander({ ics: input, maxIterations: 10_000 });
   const expanded = expander.between(start, end);
   const events: SourceEvent[] = [];
@@ -75,6 +80,16 @@ export function parseIcs(input: string, options: IcsOptions, now = new Date()): 
   return [...unique.values()].sort((a, b) => temporalSort(a.start, b.start));
 }
 
+export function previousDaysRange(days: number, now: Date, timezone: string): IcsRange {
+  if (!Number.isInteger(days) || days <= 0) throw new Error("Backfill days must be a positive integer");
+  const today = localDate(now, timezone);
+  const end = localMidnight(today, timezone);
+  const date = new Date(`${today}T00:00:00Z`);
+  date.setUTCDate(date.getUTCDate() - days);
+  const start = localMidnight(date.toISOString().slice(0, 10), timezone);
+  return { start, end };
+}
+
 function text(value: unknown): string {
   if (value === undefined || value === null) return "";
   return String(value);
@@ -114,4 +129,26 @@ function propertyValue(event: Record<string, unknown>, name: string): unknown {
 
 function temporalSort(a: SourceEvent["start"], b: SourceEvent["start"]): number {
   return String(a).localeCompare(String(b));
+}
+
+function localDate(value: Date, timezone: string): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: timezone, year: "numeric", month: "2-digit", day: "2-digit" }).format(value);
+}
+
+function localMidnight(date: string, timezone: string): Date {
+  const [year, month, day] = date.split("-").map(Number);
+  const utcMidnight = Date.UTC(year, month - 1, day);
+  const zonedParts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: timezone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hourCycle: "h23"
+  }).formatToParts(new Date(utcMidnight));
+  const values = Object.fromEntries(zonedParts.map((part) => [part.type, part.value]));
+  const zonedAsUtc = Date.UTC(Number(values.year), Number(values.month) - 1, Number(values.day), Number(values.hour), Number(values.minute), Number(values.second));
+  return new Date(utcMidnight - (zonedAsUtc - utcMidnight));
 }
