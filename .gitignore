@@ -5,4 +5,11 @@ credentials.json
 token.json
 state.json
 sync.lock
+
+# Local notification endpoints and credentials
+ha-notify-url
+ntfy-url
+api-token
+notifications.local.json
+
 test/fixtures/original-calendar.ics

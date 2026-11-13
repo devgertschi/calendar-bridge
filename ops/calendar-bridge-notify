@@ -1,0 +1,132 @@
+#!/usr/bin/env python3
+"""Send deduplicated Calendar Bridge status notifications via HA and ntfy."""
+
+import json
+import os
+import sys
+import time
+import urllib.request
+from pathlib import Path
+
+HA_NOTIFY_URL_FILE = Path.home() / ".config/calendar-bridge/ha-notify-url"
+HA_TOKEN_FILE = Path.home() / ".config/homeassistant/api-token"
+NTFY_URL_FILE = Path.home() / ".config/calendar-bridge/ntfy-url"
+STATE_DIR = Path.home() / ".local/state/calendar-bridge"
+STATE_FILE = STATE_DIR / "notification-state.json"
+REPEAT_SECONDS = 12 * 60 * 60
+HOSTNAME = os.uname().nodename
+
+
+def post(url: str, body: bytes, headers: dict[str, str]) -> None:
+    request = urllib.request.Request(url, data=body, headers=headers, method="POST")
+    with urllib.request.urlopen(request, timeout=10) as response:
+        if not 200 <= response.status < 300:
+            raise RuntimeError(f"HTTP {response.status}")
+
+
+def notify_home_assistant(title: str, message: str, tag: str) -> None:
+    url = HA_NOTIFY_URL_FILE.read_text().strip()
+    token = HA_TOKEN_FILE.read_text().strip()
+    payload = json.dumps({"title": title, "message": message, "data": {"tag": tag}}).encode()
+    post(
+        url,
+        payload,
+        {"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
+    )
+
+
+def notify_ntfy(title: str, message: str, priority: str, tags: str) -> None:
+    url = NTFY_URL_FILE.read_text().strip()
+    post(
+        url,
+        message.encode(),
+        {"Title": title, "Priority": priority, "Tags": tags, "Content-Type": "text/plain; charset=utf-8"},
+    )
+
+
+def send(title: str, message: str, priority: str, tags: str) -> None:
+    failures = []
+    for name, operation in (
+        ("Home Assistant", lambda: notify_home_assistant(title, message, "calendar-bridge-status")),
+        ("ntfy", lambda: notify_ntfy(title, message, priority, tags)),
+    ):
+        try:
+            operation()
+            print(f"Calendar Bridge notification sent via {name}")
+        except Exception as error:
+            failures.append(f"{name}: {error}")
+    if failures:
+        print("Calendar Bridge notification errors: " + "; ".join(failures), file=sys.stderr)
+
+
+def load_state() -> dict:
+    try:
+        return json.loads(STATE_FILE.read_text())
+    except (FileNotFoundError, json.JSONDecodeError):
+        return {}
+
+
+def save_state(state: dict) -> None:
+    STATE_DIR.mkdir(mode=0o700, parents=True, exist_ok=True)
+    temporary = STATE_FILE.with_suffix(".tmp")
+    temporary.write_text(json.dumps(state, indent=2) + "\n")
+    os.chmod(temporary, 0o600)
+    temporary.replace(STATE_FILE)
+
+
+def failure() -> None:
+    now = int(time.time())
+    state = load_state()
+    last_alert = int(state.get("lastAlert", 0))
+    should_alert = not state.get("failing") or now - last_alert >= REPEAT_SECONDS
+    if should_alert:
+        send(
+            "Calendar Bridge failed",
+            f"A scheduled calendar synchronization failed on {HOSTNAME}. Check: journalctl --user -u calendar-bridge.service -n 80",
+            "high",
+            "warning,calendar",
+        )
+        last_alert = now
+    save_state({
+        "failing": True,
+        "firstFailure": int(state.get("firstFailure", now)),
+        "lastAlert": last_alert,
+    })
+
+
+def success() -> None:
+    state = load_state()
+    if not state.get("failing"):
+        return
+    send(
+        "Calendar Bridge recovered",
+        f"Calendar synchronization on {HOSTNAME} is working again.",
+        "default",
+        "white_check_mark,calendar",
+    )
+    STATE_FILE.unlink(missing_ok=True)
+
+
+def test() -> None:
+    send(
+        "Calendar Bridge notification test",
+        f"Home Assistant and ntfy notifications are configured on {HOSTNAME}.",
+        "default",
+        "white_check_mark,calendar",
+    )
+
+
+def main() -> None:
+    action = sys.argv[1] if len(sys.argv) > 1 else ""
+    if action == "failure":
+        failure()
+    elif action == "success":
+        success()
+    elif action == "test":
+        test()
+    else:
+        raise SystemExit("Usage: calendar-bridge-notify failure|success|test")
+
+
+if __name__ == "__main__":
+    main()

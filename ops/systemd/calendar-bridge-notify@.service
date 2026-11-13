@@ -1,0 +1,6 @@
+[Unit]
+Description=Send Calendar Bridge %i notification
+
+[Service]
+Type=oneshot
+ExecStart=%h/.local/bin/calendar-bridge-notify %i

@@ -215,6 +215,35 @@ journalctl -u calendar-bridge.service
 
 For an initial observation period, schedule the same service with `--dry-run`. Once the dry-run plan is understood and stable, remove `--dry-run` for live operation.
 
+## Failure and recovery notifications
+
+The optional files under `ops/` add deduplicated Home Assistant and ntfy notifications around the systemd service. The first failure sends an alert, continuing failures are suppressed for 12 hours, and the next successful sync sends a recovery message.
+
+Install the helper and user-unit files:
+
+```sh
+install -Dm700 ops/calendar-bridge-notify ~/.local/bin/calendar-bridge-notify
+install -Dm644 ops/systemd/calendar-bridge-notify@.service ~/.config/systemd/user/calendar-bridge-notify@.service
+install -Dm644 ops/systemd/calendar-bridge.service.d/notifications.conf ~/.config/systemd/user/calendar-bridge.service.d/notifications.conf
+```
+
+Create these private local files outside the repository:
+
+- `~/.config/calendar-bridge/ha-notify-url`: the complete Home Assistant mobile-app notification service URL.
+- `~/.config/calendar-bridge/ntfy-url`: the complete ntfy topic URL. Treat the topic URL as a password.
+- `~/.config/homeassistant/api-token`: a dedicated Home Assistant long-lived access token.
+
+Protect the local configuration and test both channels:
+
+```sh
+chmod 700 ~/.config/calendar-bridge
+chmod 600 ~/.config/calendar-bridge/ha-notify-url ~/.config/calendar-bridge/ntfy-url ~/.config/homeassistant/api-token
+systemctl --user daemon-reload
+~/.local/bin/calendar-bridge-notify test
+```
+
+Notification failures are logged but deliberately do not change the calendar synchronization result. The helper stores only failure timing state under `~/.local/state/calendar-bridge/`.
+
 ## Security and operations
 
 - Restrict permissions on `credentials.json`, `token.json`, `config.yaml`, and `state.json`.
