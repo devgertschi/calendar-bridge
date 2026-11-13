@@ -53,4 +53,17 @@ export async function main(): Promise<void> {
   }
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) main().catch((error) => { console.error(error); process.exitCode = 1; });
+export function cliErrorMessage(error: unknown, activeConfigPath = configPath): string | undefined {
+  if (!error || typeof error !== "object") return undefined;
+  const value = error as { message?: unknown; response?: { data?: { error?: unknown } } };
+  const googleError = value.response?.data?.error;
+  if (googleError === "invalid_grant" || value.message === "invalid_grant") {
+    return `Google authorization is invalid or expired. Reauthorize with: npm run authorize -- --config ${activeConfigPath}`;
+  }
+  return undefined;
+}
+
+if (import.meta.url === `file://${process.argv[1]}`) main().catch((error) => {
+  console.error(cliErrorMessage(error) ?? error);
+  process.exitCode = 1;
+});

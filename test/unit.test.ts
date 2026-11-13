@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { fingerprint, googleBody, sourceKey, temporalMatches, visibleFieldsMatch, type ManagedGoogleEvent, type SourceEvent } from "../src/domain.js";
 import { reconcile } from "../src/reconcile.js";
 import { assertSourceIsSafe } from "../src/ics.js";
+import { cliErrorMessage } from "../src/cli.js";
 
 const event = (summary = "Meeting"): SourceEvent => ({ key: "uid|single", uid: "uid", summary, start: new Date("2026-01-01T10:00:00Z"), end: new Date("2026-01-01T11:00:00Z"), allDay: false, location: "Room 1", description: "Details", status: "CONFIRMED", busy: true });
 const options = { copyDescription: true, copyLocation: true, visibility: "private", summaryPrefix: "" };
@@ -107,5 +108,18 @@ describe("source safety", () => {
   it("rejects an empty source by default", () => {
     expect(() => assertSourceIsSafe([], false)).toThrow(/no events/);
     expect(() => assertSourceIsSafe([], true)).not.toThrow();
+  });
+});
+
+describe("CLI errors", () => {
+  it("gives an actionable message for an expired Google authorization", () => {
+    const error = { message: "invalid_grant", response: { data: { error: "invalid_grant" } } };
+    expect(cliErrorMessage(error, "/tmp/config.yaml")).toBe(
+      "Google authorization is invalid or expired. Reauthorize with: npm run authorize -- --config /tmp/config.yaml"
+    );
+  });
+
+  it("leaves unrelated errors unchanged", () => {
+    expect(cliErrorMessage(new Error("network failed"))).toBeUndefined();
   });
 });
